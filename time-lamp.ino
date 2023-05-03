@@ -1,3 +1,7 @@
+// TODO
+// button debouncing
+// intl date line handling
+
 #include <WiFiNINA.h>  // use this for Nano 33 IoT, MKR1010, Uno WiFi
 #include <Wire.h>
 #include <ArduinoHttpClient.h>
