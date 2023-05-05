@@ -35,6 +35,7 @@ int modeState = 0;
 // 2 = time zone mode
 int prevState = 0;
 unsigned long startMillis = 0;
+int brightness = 50;
 
 // initialize WiFi connection as SSL:
 // WiFiSSLClient wifi;
@@ -80,7 +81,7 @@ void loop() {
     digitalWrite(ledPin, HIGH);
   } else {
     // time zone mode
-    Serial.println("time zone mode");
+    // Serial.println("time zone mode");
     // digitalWrite(ledPin, HIGH);
     if ((millis() - startMillis) % 60000 == 0 || buttonState != buttonHistory) {
       //if you disconnected from the network, reconnect:
@@ -97,12 +98,13 @@ void loop() {
       digitalWrite(ledPin, LOW);
       makeGetRequest();
       digitalWrite(ledPin, HIGH);
-      Serial.println("waiting 60 seconds until next API call");
+      // Serial.println("waiting 60 seconds until next API call");
       if (buttonState != buttonHistory) {
         startMillis = millis();
       }
       Serial.println(String(startMillis));
     }
+    timeClient.update();
   }
 
   // button logic
@@ -149,6 +151,27 @@ void makeGetRequest() {
   parseResponse(response);
 }
 
+void makeTmmrGetRequest() {
+  Serial.println("making GET request for TOMORROW");
+  // send query with coordinates
+  String request = "/json?lat=LATITUDE&lng=LONGITUDE&date=tomorrow&formatted=0";
+  request.replace("LATITUDE", String(LATITUDE));
+  request.replace("LONGITUDE", String(LONGITUDE));
+  Serial.println("getting " + request);
+  httpClient.get(request);
+
+  // read the status code and body of the response
+  int statusCode = httpClient.responseStatusCode();
+  String response = httpClient.responseBody();
+
+  Serial.print("Status code: ");
+  Serial.println(statusCode);
+  Serial.print("Response: ");
+  Serial.println(response);
+
+  parseResponse(response);
+}
+
 void parseResponse(String response) {
   // parse in time to epoch UTC
   // FORMAT
@@ -175,12 +198,13 @@ void parseResponse(String response) {
   Serial.println("sunrise time: " + String(int(sunriseEpoch)));
   Serial.println("sunset time: " + String(int(sunsetEpoch)));
 
-  int brightness;
-
   if (timeClient.getEpochTime() < middayEpoch && timeClient.getEpochTime() > sunriseEpoch) {
     brightness = map(timeClient.getEpochTime(), sunriseEpoch, middayEpoch, 0, 255);
   } else if (timeClient.getEpochTime() >= middayEpoch && timeClient.getEpochTime() < sunsetEpoch) {
     brightness = map(timeClient.getEpochTime(), middayEpoch, sunsetEpoch, 255, 0);
+  } else if (timeClient.getEpochTime() > sunsetEpoch) {
+    //check if it's the next day in nz
+    makeTmmrGetRequest();
   } else {
     brightness = 0;
   }
